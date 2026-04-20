@@ -1,0 +1,37 @@
+.skeleton-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  animation: fadeIn 0.4s ease-out;
+  padding: 40px 20px;
+}
+
+.skeleton-pulse {
+  background: linear-gradient(110deg, var(--bg-card) 8%, var(--bg-card-hover) 18%, var(--bg-card) 33%);
+  background-size: 200% 100%;
+  animation: 1.5s skeleton-shimmer linear infinite;
+  border-radius: 8px;
+}
+
+.skeleton-title {
+  height: 28px;
+}
+
+.skeleton-text {
+  height: 16px;
+}
+
+.skeleton-message {
+  color: var(--primary);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  to {
+    background-position-x: -200%;
+  }
+}
