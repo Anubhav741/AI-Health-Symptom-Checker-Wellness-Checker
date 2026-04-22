@@ -155,14 +155,9 @@ export const getCheckups = async () => {
 };
 
 export const getCheckupById = async (id) => {
-  try {
-    const res = await fetch(`${BASE_URL}/reports/${id}`);
-    if (!res.ok) throw new Error('Checkup not found');
-    return await res.json();
-  } catch (err) {
-    console.error(`Failed to load checkup ${id}:`, err);
-    return null;
-  }
+  const res = await fetch(`${BASE_URL}/reports/${id}`);
+  if (!res.ok) throw new Error('Checkup not found');
+  return await res.json();
 };
 
 export const fetchHospitals = async (lat, lng) => {
@@ -231,7 +226,72 @@ export const processChatWithAI = async (message, history, context, model = 'Qwen
     if (err.name === 'AbortError') {
       return "⚠️ AI response took too long. Please try a shorter question.";
     }
-    return "⚠️ AI assistant temporarily unavailable";
+    return "AI is currently busy. Please try again in a moment.";
+  }
+};
+
+// ─── Health Tracking API ───
+
+export const initializeTracking = async (payload) => {
+  try {
+    const res = await fetch(`${DB_URL}/tracking/init`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Failed to initialize tracking:', err);
+    return null;
+  }
+};
+
+export const updateTrackingActions = async (payload) => {
+  try {
+    const res = await fetch(`${DB_URL}/tracking/actions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Failed to update tracking actions:', err);
+    return null;
+  }
+};
+
+export const confirmRecovery = async (payload) => {
+  try {
+    const res = await fetch(`${DB_URL}/tracking/recovery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Failed to confirm recovery:', err);
+    return null;
+  }
+};
+
+export const getTracking = async (checkupId) => {
+  try {
+    const res = await fetch(`${DB_URL}/tracking/${checkupId}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error('Failed to fetch tracking:', err);
+    return null;
+  }
+};
+
+export const getTrackingHistory = async (email) => {
+  try {
+    const res = await fetch(`${DB_URL}/tracking?email=${encodeURIComponent(email)}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Failed to fetch tracking history:', err);
+    return [];
   }
 };
 

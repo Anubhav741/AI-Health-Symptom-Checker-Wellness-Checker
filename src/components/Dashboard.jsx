@@ -4,7 +4,9 @@ import Results from './Results';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import SkeletonLoader from './SkeletonLoader';
 import Chatbot from './Chatbot';
-import { analyzeSymptoms, saveCheckupToDB, getCheckups } from '../services/api';
+import GamificationBar from './GamificationBar';
+import ThemeToggle from './ThemeToggle';
+import { analyzeSymptoms, saveCheckupToDB, getCheckupById } from '../services/api';
 import './Dashboard.css';
 
 /* ── Toast helper ── */
@@ -18,19 +20,125 @@ const useToast = () => {
 };
 
 /* ─────────────────────────────────────────────────────────────
-   SidebarContent MUST live OUTSIDE Dashboard.
-   If defined inside, React creates a new component type on every
-   render → sidebar unmounts + remounts → any focused input loses focus.
+   PatientSummaryModal — shows when clicking a history item
+   instead of navigating away / refreshing
+───────────────────────────────────────────────────────────── */
+const PatientSummaryModal = ({ report, onClose, onViewFull }) => {
+  if (!report) return null;
+  const sevColors = { low: '#22c55e', moderate: '#f5a623', medium: '#f5a623', high: '#f25f5c' };
+  const sev = (report.severity || 'low').toLowerCase();
+  const condition = report.conditions?.[0]?.name || report.conditions?.[0]?.condition || 'Unknown';
+  const recs = Array.isArray(report.recommendations) ? report.recommendations.slice(0, 4) : [];
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(26,35,50,0.3)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100,
+      animation: 'fadeIn 0.15s ease-out'
+    }} onClick={onClose}>
+      <div style={{
+        background: '#fff', border: '1px solid var(--border)', borderRadius: '20px',
+        padding: '28px 30px', width: '90%', maxWidth: '500px', maxHeight: '80vh',
+        overflowY: 'auto', boxShadow: '0 20px 60px rgba(26,35,50,0.18)',
+        animation: 'fadeUp 0.2s ease-out'
+      }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px' }}>
+          <div>
+            <h2 style={{ margin: '0 0 4px', fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
+              {report.name || 'Patient'}
+            </h2>
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
+              {report.age && `Age: ${report.age}`} {report.gender && `• ${report.gender}`} {report.email && `• ${report.email}`}
+            </p>
+          </div>
+          <button onClick={onClose} style={{
+            color: 'var(--text-muted)', fontSize: '1.2rem', background: 'var(--bg-muted)',
+            padding: '4px 11px', borderRadius: '8px', border: '1px solid var(--border)',
+            cursor: 'pointer', fontFamily: 'var(--font)'
+          }}>✕</button>
+        </div>
+
+        {/* Severity */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
+          background: sev === 'high' ? '#fff5f5' : sev === 'moderate' || sev === 'medium' ? '#fffbeb' : '#f0fdf4',
+          border: `1.5px solid ${sevColors[sev] || '#e2e8f0'}`,
+          borderRadius: '12px', marginBottom: '16px'
+        }}>
+          <span style={{ fontSize: '24px' }}>{sev === 'high' ? '🔴' : sev === 'low' ? '🟢' : '🟡'}</span>
+          <div>
+            <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: sevColors[sev], display: 'block' }}>Severity</span>
+            <span style={{ fontSize: '16px', fontWeight: 800, color: sevColors[sev], textTransform: 'capitalize' }}>{report.severity || 'Low'}</span>
+          </div>
+        </div>
+
+        {/* Likely Condition */}
+        <div style={{ marginBottom: '14px' }}>
+          <h4 style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '6px' }}>Likely Condition</h4>
+          <p style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>{condition}</p>
+        </div>
+
+        {/* Symptoms */}
+        {report.symptoms && (
+          <div style={{ marginBottom: '14px' }}>
+            <h4 style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '6px' }}>Reported Symptoms</h4>
+            <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, background: 'var(--bg-muted)', padding: '10px 14px', borderRadius: '10px' }}>{report.symptoms}</p>
+          </div>
+        )}
+
+        {/* Recommendations */}
+        {recs.length > 0 && (
+          <div style={{ marginBottom: '16px' }}>
+            <h4 style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-muted)', marginBottom: '6px' }}>Quick Recommendations</h4>
+            <ul style={{ margin: 0, paddingLeft: '16px', color: 'var(--text-secondary)', fontSize: '13px', lineHeight: 1.7 }}>
+              {recs.map((r, i) => <li key={i} style={{ marginBottom: '4px' }}>{r}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {/* Date */}
+        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '18px' }}>
+          📅 {report.createdAt ? new Date(report.createdAt).toLocaleString() : 'Date not available'}
+        </p>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button onClick={onViewFull} style={{
+            padding: '10px 18px', background: 'var(--primary)', color: '#fff',
+            borderRadius: '10px', fontSize: '13px', fontWeight: 600,
+            boxShadow: '0 2px 8px rgba(79,125,245,0.3)',
+            cursor: 'pointer', fontFamily: 'var(--font)', transition: 'all 0.15s'
+          }}>📊 View Full Report</button>
+          <button onClick={() => window.print()} style={{
+            padding: '10px 18px', background: '#fff', color: 'var(--text-secondary)',
+            borderRadius: '10px', fontSize: '13px', fontWeight: 600,
+            border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font)', transition: 'all 0.15s'
+          }}>🖨 Print</button>
+          <button onClick={onClose} style={{
+            padding: '10px 18px', background: '#fff', color: 'var(--text-muted)',
+            borderRadius: '10px', fontSize: '13px', fontWeight: 600,
+            border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font)', transition: 'all 0.15s'
+          }}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────
+   SidebarContent — lives OUTSIDE Dashboard to avoid remounts
 ───────────────────────────────────────────────────────────── */
 const SidebarContent = ({
   sidebarOpen,
   setSidebarOpen,
   view,
-  results,
+  showResults,
   history,
   onHome,
   onNewCheckup,
   onViewResults,
+  onHistoryClick,
 }) => (
   <>
     <div className="sidebar-logo">
@@ -57,7 +165,7 @@ const SidebarContent = ({
         {sidebarOpen && <span>New Checkup</span>}
       </button>
 
-      {results && (
+      {showResults && (
         <button
           id="nav-last-results"
           className={`nav-item ${view === 'results' ? 'active' : ''}`}
@@ -75,7 +183,12 @@ const SidebarContent = ({
         <p className="history-label">Recent Checkups</p>
         <ul className="history-list">
           {history.map((h) => (
-            <li key={h.id} className="history-item">
+            <li 
+              key={h.id} 
+              className="history-item" 
+              onClick={() => onHistoryClick(h)}
+              style={{ cursor: 'pointer' }}
+            >
               <span className="history-dot" data-sev={h.severity?.toLowerCase()} />
               <div className="history-meta">
                 <span className="history-name">{h.name}</span>
@@ -102,44 +215,150 @@ const SidebarContent = ({
 
 /* ── Main Dashboard ── */
 const Dashboard = () => {
-  const [view,             setView]             = useState('home');
-  const [formData,         setFormData]         = useState(null);
-  const [results,          setResults]          = useState(null);
-  const [loading,          setLoading]          = useState(false);
-  const [error,            setError]            = useState(null);
-  const [sidebarOpen,      setSidebarOpen]      = useState(true);
-  const [mobileSidebarOpen,setMobileSidebarOpen]= useState(false);
-  const [history,          setHistory]          = useState([]);
+  const [view, setView] = useState(() => {
+    return localStorage.getItem('health_view') || 'home';
+  });
+  const [formData, setFormData] = useState(() => {
+    const saved = localStorage.getItem('health_formData');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [results, setResults] = useState(() => {
+    const saved = localStorage.getItem('health_results');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [patientModal, setPatientModal] = useState(null);
   const { toast, show: showToast } = useToast();
+
+  const [everHadResults, setEverHadResults] = useState(() => {
+    return !!localStorage.getItem('health_results');
+  });
+
+  useEffect(() => {
+    localStorage.setItem('health_view', view);
+  }, [view]);
+
+  useEffect(() => {
+    if (formData) localStorage.setItem('health_formData', JSON.stringify(formData));
+    else localStorage.removeItem('health_formData');
+  }, [formData]);
+
+  useEffect(() => {
+    if (results) localStorage.setItem('health_results', JSON.stringify(results));
+    else localStorage.removeItem('health_results');
+  }, [results]);
+
+  useEffect(() => {
+    if (results) setEverHadResults(true);
+  }, [results]);
 
   const fetchHistory = useCallback(() => {
     fetch("http://localhost:5001/reports")
       .then(res => res.json())
       .then(data => {
-        console.log("Reports:", data);
         if (Array.isArray(data)) {
-          const formatted = data.map(h => ({
-            id: h._id || h.id || Math.random(),
+          const apiFormatted = data.map(h => ({
+            id: h._id || h.id || Math.random().toString(),
             name: h.name,
+            email: h.email,
+            age: h.age,
+            gender: h.gender,
+            symptoms: h.symptoms,
             timestamp: h.createdAt,
             severity: h.severity,
+            conditions: h.conditions,
+            recommendations: h.recommendations,
             topCondition: h.conditions?.[0]?.name || h.conditions?.[0]?.condition || 'Unknown'
           }));
-          setHistory(formatted.slice(0, 5));
+          const combined = [...apiFormatted];
+          const localHistoryStr = localStorage.getItem('health_history');
+          if (localHistoryStr) {
+            try {
+              const localHistory = JSON.parse(localHistoryStr);
+              localHistory.forEach(lh => {
+                if (!combined.find(c => c.id === lh.id)) {
+                  combined.push(lh);
+                }
+              });
+            } catch (e) {}
+          }
+          setHistory(combined.slice(0, 15));
         }
       })
-      .catch(e => console.error("Fetch history error:", e));
+      .catch(e => {
+        console.error("Fetch history error, falling back to local:", e);
+        const localHistoryStr = localStorage.getItem('health_history');
+        if (localHistoryStr) {
+          try {
+            setHistory(JSON.parse(localHistoryStr).slice(0, 15));
+          } catch (err) {}
+        }
+      });
   }, []);
 
   useEffect(() => {
     fetchHistory();
   }, [fetchHistory]);
 
-  // Close mobile sidebar whenever view changes
   useEffect(() => { setMobileSidebarOpen(false); }, [view]);
 
+  /* ─── FIXED: History click now opens a modal summary instead of navigating ─── */
+  const handleHistoryClick = (historyItem) => {
+    // historyItem already contains all the data from API or localStorage
+    // Try to load full report from localStorage first (local reports have full data)
+    const localReport = localStorage.getItem(`health_report_${historyItem.id}`);
+    
+    let report;
+    if (localReport) {
+      report = JSON.parse(localReport);
+    } else if (historyItem.conditions) {
+      // API data already has conditions embedded
+      report = {
+        ...historyItem,
+        createdAt: historyItem.timestamp
+      };
+    } else {
+      // Minimal data — still show what we have
+      report = {
+        name: historyItem.name,
+        severity: historyItem.severity,
+        conditions: [{ name: historyItem.topCondition }],
+        createdAt: historyItem.timestamp,
+        recommendations: []
+      };
+    }
+
+    setPatientModal(report);
+    if (window.innerWidth <= 768) setMobileSidebarOpen(false);
+  };
+
+  /* ─── View Full Report from modal ─── */
+  const handleViewFullReport = () => {
+    if (!patientModal) return;
+    
+    setFormData({
+      name: patientModal.name,
+      email: patientModal.email,
+      age: patientModal.age,
+      gender: patientModal.gender,
+      symptoms: patientModal.symptoms,
+      checkupId: patientModal.checkupId || patientModal._id || patientModal.id
+    });
+    setResults({
+      conditions: patientModal.conditions || [],
+      severity: patientModal.severity || 'low',
+      recommendations: patientModal.recommendations || []
+    });
+    setPatientModal(null);
+    setView('results');
+  };
+
   const handleNewCheckup = () => {
-    setResults(null);
     setError(null);
     setView('form');
   };
@@ -152,16 +371,44 @@ const Dashboard = () => {
       const response = await analyzeSymptoms(data);
       setResults(response);
       
-      // Save full result backend to database
+      const checkupId = `chk_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      
       const dbPayload = {
         ...data,
         conditions: response.conditions,
         severity: response.severity,
         recommendations: response.recommendations
       };
-      await saveCheckupToDB(dbPayload);
       
-      // Auto-refresh history globally
+      try {
+        await saveCheckupToDB(dbPayload);
+      } catch (dbErr) {
+        console.warn("DB offline, saved checkup locally entirely");
+      }
+      
+      // Save full report to local storage for offline history
+      localStorage.setItem(`health_report_${checkupId}`, JSON.stringify({ ...dbPayload, id: checkupId, createdAt: new Date().toISOString() }));
+
+      // Update local history array
+      const localHistoryStr = localStorage.getItem('health_history');
+      let localHistory = localHistoryStr ? JSON.parse(localHistoryStr) : [];
+      localHistory.unshift({
+        id: checkupId,
+        name: data.name,
+        email: data.email,
+        age: data.age,
+        gender: data.gender,
+        symptoms: data.symptoms,
+        timestamp: new Date().toISOString(),
+        severity: response.severity,
+        conditions: response.conditions,
+        recommendations: response.recommendations,
+        topCondition: response.conditions?.[0]?.name || response.conditions?.[0]?.condition || 'Unknown'
+      });
+      localStorage.setItem('health_history', JSON.stringify(localHistory));
+      
+      setFormData(prev => ({ ...prev, checkupId }));
+      
       await fetchHistory();
 
       setView('results');
@@ -177,46 +424,46 @@ const Dashboard = () => {
 
   const handleReset = () => {
     setView('home');
-    setResults(null);
-    setFormData(null);
     setError(null);
   };
 
-  // Shared sidebar props — passed by reference so SidebarContent stays stable
+  const handleViewResults = () => {
+    if (!results) {
+      const savedResults = localStorage.getItem('health_results');
+      const savedFormData = localStorage.getItem('health_formData');
+      if (savedResults) setResults(JSON.parse(savedResults));
+      if (savedFormData) setFormData(JSON.parse(savedFormData));
+    }
+    setView('results');
+  };
+
   const sidebarProps = {
     sidebarOpen,
     setSidebarOpen,
     view,
-    results,
+    showResults: !!results || everHadResults,
     history,
     onHome: handleReset,
     onNewCheckup: handleNewCheckup,
-    onViewResults: () => setView('results'),
+    onViewResults: handleViewResults,
+    onHistoryClick: handleHistoryClick,
   };
 
   return (
     <div className="dashboard-wrapper">
-      {/* Mobile overlay */}
       {mobileSidebarOpen && (
-        <div
-          className="mobile-overlay"
-          onClick={() => setMobileSidebarOpen(false)}
-        />
+        <div className="mobile-overlay" onClick={() => setMobileSidebarOpen(false)} />
       )}
 
-      {/* Desktop Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
         <SidebarContent {...sidebarProps} />
       </aside>
 
-      {/* Mobile Sidebar */}
       <aside className={`sidebar mobile-sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
         <SidebarContent {...sidebarProps} />
       </aside>
 
-      {/* Main Area */}
       <div className="main-area">
-        {/* Header */}
         <header className="top-header">
           <div className="header-left">
             <button
@@ -229,17 +476,17 @@ const Dashboard = () => {
             </button>
             <h1 className="header-title">AI Health Assistant</h1>
             <span className="header-badge">Beta</span>
+            <ThemeToggle />
           </div>
           <button id="header-new-checkup" className="cta-btn" onClick={handleNewCheckup}>
             <span>＋</span> New Checkup
           </button>
         </header>
 
-        {/* Content */}
         <main className="content-area">
-          {loading && (
-            <SkeletonLoader type="analysis" />
-          )}
+          <GamificationBar totalCheckups={history.length} />
+
+          {loading && <SkeletonLoader type="analysis" />}
 
           {error && (
             <div className="error-card">
@@ -277,10 +524,17 @@ const Dashboard = () => {
         </main>
       </div>
 
-      {/* Toast */}
+      {/* Patient Summary Modal */}
+      {patientModal && (
+        <PatientSummaryModal
+          report={patientModal}
+          onClose={() => setPatientModal(null)}
+          onViewFull={handleViewFullReport}
+        />
+      )}
+
       {toast && <div className="toast">{toast}</div>}
 
-      {/* Persistent AI Medical Chatbot */}
       <Chatbot results={results} formData={formData} />
     </div>
   );

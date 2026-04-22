@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import HospitalList from './HospitalList';
 import ReportGenerator from './ReportGenerator';
 import ResultCard from './ResultCard';
+import HealthTracker from './HealthTracker';
 import './Results.css';
 
 const SEVERITY_META = {
@@ -19,8 +20,56 @@ const Results = ({ results, patientName, patientData, onReset, onNewCheckup }) =
   const keyRecommendation = recommendations[0] || 'Monitor symptoms and consult a healthcare professional if they worsen.';
   const summarySeverityLabel = sev.label;
   const quickSummary = `${summarySeverityLabel}. Most likely concern: ${topCondition}${topProbability ? ` (${topProbability}%)` : ''}. Next step: ${keyRecommendation}`;
+  const [copied, setCopied] = useState(false);
+
+  const stableCheckupId = useMemo(() => {
+    return patientData?.checkupId || `chk_${patientData?.name?.replace(/\s+/g, '_')}_${Date.now()}`;
+  }, [patientData?.checkupId, patientData?.name]);
 
   const handlePrint = () => window.print();
+
+  const handleDownloadReport = () => {
+    const lines = [
+      '═══════════════════════════════════════════',
+      '  AI HEALTH ASSISTANT — DIAGNOSTIC REPORT  ',
+      '═══════════════════════════════════════════',
+      '',
+      `Patient: ${patientName || 'N/A'}`,
+      `Date: ${new Date().toLocaleString()}`,
+      `Severity: ${sev.label}`,
+      '',
+      '─── SYMPTOMS ───',
+      patientData?.symptoms || 'Not provided',
+      '',
+      '─── TOP CONDITIONS ───',
+      ...conditions.map((c, i) => 
+        `  ${i + 1}. ${c.name || c.condition} — ${c.probability || '?'}% probability`
+      ),
+      '',
+      '─── RECOMMENDATIONS ───',
+      ...recommendations.map((r, i) => `  ${i + 1}. ${r}`),
+      '',
+      '═══════════════════════════════════════════',
+      '⚕ This is for informational purposes only.',
+      '  Always consult a qualified healthcare professional.',
+      '═══════════════════════════════════════════'
+    ];
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `HealthAI_Report_${patientName?.replace(/\s+/g, '_') || 'Patient'}_${new Date().toISOString().split('T')[0]}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopySummary = () => {
+    navigator.clipboard.writeText(quickSummary).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   return (
     <div className="results-wrapper">
@@ -30,16 +79,22 @@ const Results = ({ results, patientName, patientData, onReset, onNewCheckup }) =
           <h2 className="results-title">✅ Analysis Complete</h2>
           {patientName && (
             <p className="results-sub">
-              Report for <strong>{patientName}</strong>
+              Report for <strong>{patientName}</strong> • {new Date().toLocaleDateString()}
             </p>
           )}
         </div>
         <div className="results-actions">
+          <button id="download-report-btn" className="ghost-action-btn" onClick={handleDownloadReport} title="Download report as text">
+            📥 Download
+          </button>
+          <button id="copy-summary-btn" className="ghost-action-btn" onClick={handleCopySummary} title="Copy summary to clipboard">
+            {copied ? '✅ Copied!' : '📋 Copy'}
+          </button>
           <button id="print-report-btn" className="ghost-action-btn" onClick={handlePrint} title="Print report">
             🖨 Print
           </button>
-          <button id="new-checkup-btn" className="new-checkup-btn" onClick={onReset}>
-            ← New Checkup
+          <button id="new-checkup-btn" className="new-checkup-btn" onClick={onNewCheckup}>
+            ＋ New Checkup
           </button>
         </div>
       </div>
@@ -69,6 +124,21 @@ const Results = ({ results, patientName, patientData, onReset, onNewCheckup }) =
         </div>
       </section>
 
+      {/* Patient Info Card */}
+      {patientData && (
+        <section className="section">
+          <h3 className="section-title">👤 Patient Information</h3>
+          <div className="quick-summary-card" style={{ borderLeftColor: 'var(--accent-purple)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', fontSize: '14px' }}>
+              <div><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Name</span><br /><strong>{patientData.name || 'N/A'}</strong></div>
+              <div><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Age</span><br /><strong>{patientData.age || 'N/A'}</strong></div>
+              <div><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Gender</span><br /><strong>{patientData.gender || 'N/A'}</strong></div>
+              <div><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Email</span><br /><strong>{patientData.email || 'N/A'}</strong></div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Conditions */}
       <section className="section">
         <h3 className="section-title">🧬 Top Possible Conditions</h3>
@@ -97,6 +167,18 @@ const Results = ({ results, patientName, patientData, onReset, onNewCheckup }) =
         </section>
       )}
 
+      {/* Health Tracking Panel */}
+      <section className="section">
+        <h3 className="section-title">📊 Health Tracking</h3>
+        <HealthTracker
+          checkupId={stableCheckupId}
+          email={patientData?.email || ''}
+          symptoms={patientData?.symptoms || ''}
+          recommendations={recommendations}
+          severity={severity}
+        />
+      </section>
+
       {/* Hospitals Recommendation */}
       <HospitalList 
         topCondition={conditions[0]?.name || conditions[0]?.condition}
@@ -112,10 +194,15 @@ const Results = ({ results, patientName, patientData, onReset, onNewCheckup }) =
         recommendations={recommendations}
       />
 
-      {/* CTA */}
-      <button id="another-checkup-btn" className="another-btn" onClick={onNewCheckup}>
-        📋 Start Another Checkup
-      </button>
+      {/* Action buttons */}
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <button id="another-checkup-btn" className="another-btn" onClick={onNewCheckup}>
+          📋 Start Another Checkup
+        </button>
+        <button className="another-btn" onClick={onReset} style={{ background: '#fff', color: 'var(--text-secondary)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+          🏠 Go Home
+        </button>
+      </div>
 
       <p className="disclaimer">
         ⚕ This report is for informational purposes only and does not constitute medical advice.

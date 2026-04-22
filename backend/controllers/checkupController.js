@@ -34,12 +34,18 @@ export const getCheckups = async (req, res) => {
 export const getCheckupById = async (req, res) => {
   try {
     if (mongoose.connection.readyState !== 1) {
-      return res.status(503).json({ message: 'Database offline' });
+      // When DB is offline, search in-memory store
+      const found = mockMemoryDB.find(item => (item.id === req.params.id || item._id === req.params.id));
+      if (found) return res.status(200).json(found);
+      return res.status(404).json({ message: 'Checkup not found (DB offline)' });
     }
     const checkup = await Checkup.findById(req.params.id);
     if (!checkup) return res.status(404).json({ message: 'Checkup not found' });
     res.status(200).json(checkup);
   } catch (error) {
+    // If ObjectId cast fails, try mockMemoryDB
+    const found = mockMemoryDB.find(item => (item.id === req.params.id || item._id === req.params.id));
+    if (found) return res.status(200).json(found);
     res.status(500).json({ message: 'Error fetching checkup', error: error.message });
   }
 };

@@ -15,7 +15,7 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 const MODEL_OPTIONS = [
-  { value: 'Qwen/Qwen2.5-7B-Instruct', label: 'Qwen 2.5 (7B) Instruct' }
+  { value: 'Qwen/Qwen2.5-1.5B-Instruct:featherless-ai', label: 'Qwen 2.5 (1.5B) Featherless' }
 ];
 
 const Chatbot = ({ results, formData }) => {
@@ -27,6 +27,7 @@ const Chatbot = ({ results, formData }) => {
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [ollamaStatus, setOllamaStatus] = useState({ running: null, models: [] }); // null = checking
   const [streamingText, setStreamingText] = useState('');
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -62,6 +63,16 @@ const Chatbot = ({ results, formData }) => {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
+
+  // Show "Retrying..." if request takes longer than 15s without stream
+  useEffect(() => {
+    let timer;
+    if (loading && !streamingText) {
+      setIsRetrying(false);
+      timer = setTimeout(() => setIsRetrying(true), 15000);
+    }
+    return () => clearTimeout(timer);
+  }, [loading, streamingText]);
 
   const handleSend = async (text = inputValue) => {
     if (!text.trim() || loading) return;
@@ -107,7 +118,7 @@ const Chatbot = ({ results, formData }) => {
       setStreamingText('');
       setMessages([
         ...newMessages,
-        { role: 'assistant', content: '⚠️ AI assistant temporarily unavailable. Check backend logs and Hugging Face API token settings.' }
+        { role: 'assistant', content: 'AI is currently busy. Please try again in a moment.' }
       ]);
     }
 
@@ -132,9 +143,9 @@ const Chatbot = ({ results, formData }) => {
   };
 
   const getStatusLabel = () => {
-    if (ollamaStatus.running === null) return 'Checking...';
+    if (ollamaStatus.running === null) return 'Connecting...';
     if (ollamaStatus.running) return 'AI Service Online';
-    return 'AI Service Offline';
+    return 'Retrieving AI connection...';
   };
 
   // Available models from backend or fallback
@@ -177,7 +188,7 @@ const Chatbot = ({ results, formData }) => {
       {ollamaStatus.running === false && (
         <div className="ollama-offline-banner">
           <WifiOff size={14} />
-          <span>AI service is offline. Add <code>HF_API_TOKEN</code> in <code>.env</code> and restart backend.</span>
+          <span>Connecting to AI service... please wait or check backend connection.</span>
         </div>
       )}
 
@@ -205,12 +216,12 @@ const Chatbot = ({ results, formData }) => {
           </div>
         )}
 
-        {/* Dots loader (before first token arrives) */}
+        {/* Dots loader or Retrying (before first token arrives) */}
         {loading && !streamingText && (
           <div className="chat-bubble-container bot-container">
             <div className="bot-avatar"><Cpu size={12} /></div>
-            <div className="chat-bubble bot-bubble typing-indicator">
-              <span></span><span></span><span></span>
+            <div className="chat-bubble bot-bubble typing-indicator" style={{ minWidth: isRetrying ? '100px' : 'auto' }}>
+              {isRetrying ? <span style={{ fontSize: '0.9rem', width: 'auto', background: 'none', animation: 'pulse 1.5s infinite'}}>Retrying...</span> : <><span></span><span></span><span></span></>}
             </div>
           </div>
         )}

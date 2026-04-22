@@ -1,0 +1,39 @@
+/* ─── Gamification Bar — Supports Light + Dark Mode ─── */
+.gamification-bar {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 20px; background: var(--bg-surface);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  margin-bottom: 22px; box-shadow: var(--shadow-sm);
+  opacity: 0; transform: translateY(-8px);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.gamification-bar.gbar-visible { opacity: 1; transform: translateY(0); }
+.gbar-item { display: flex; align-items: center; gap: 9px; }
+
+.gbar-level-badge {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-purple), #7c5ce6);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 3px 10px rgba(155, 125, 255, 0.35); animation: none;
+}
+.gbar-level-num { font-size: 14px; font-weight: 800; color: #fff; }
+.gbar-level-info { display: flex; flex-direction: column; gap: 1px; }
+.gbar-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-light); }
+.gbar-value-sm { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+
+.gbar-xp { flex: 1; flex-direction: column; align-items: stretch; gap: 4px; min-width: 120px; }
+.gbar-xp-header { display: flex; justify-content: space-between; align-items: center; }
+.gbar-xp-value { font-size: 12px; font-weight: 700; color: var(--primary); }
+.gbar-xp-track { height: 5px; background: var(--bg-muted); border-radius: 99px; overflow: hidden; }
+.gbar-xp-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent-purple)); border-radius: 99px; transition: width 1s cubic-bezier(0.16, 1, 0.3, 1); }
+.gbar-xp-fill::after { display: none; }
+.gbar-xp-next { font-size: 10px; color: var(--text-light); }
+
+.gbar-streak { gap: 7px; padding: 6px 12px; background: var(--sev-med-bg); border: 1px solid var(--accent-yellow); border-radius: 99px; }
+.gbar-streak-icon { font-size: 17px; animation: streakFlicker 2s ease-in-out infinite; }
+@keyframes streakFlicker { 0%, 100% { transform: scale(1); } 25% { transform: scale(1.1) rotate(-5deg); } 75% { transform: scale(1.08) rotate(5deg); } }
+.gbar-streak-info { display: flex; flex-direction: column; align-items: center; }
+.gbar-streak-count { font-size: 15px; font-weight: 800; color: var(--accent-yellow); line-height: 1; }
+
+@media (max-width: 768px) { .gamification-bar { flex-wrap: wrap; gap: 10px; padding: 10px 14px; } .gbar-xp { order: 3; width: 100%; min-width: auto; } }
+@media (max-width: 480px) { .gbar-level-info { display: none; } }
