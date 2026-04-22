@@ -1,5 +1,9 @@
 # 🧠 AI-Based Health Symptom Checker and Wellness Tracker for Students Using No-Code Tools
 
+-------
+
+## Deployed Link: https://ai-health-checker-pearl.vercel.app/
+
 ---
 
 ## 📌 Overview
@@ -202,3 +206,6 @@ The system provides an:
 for promoting health awareness among students.
 
 ---
+
+
+
