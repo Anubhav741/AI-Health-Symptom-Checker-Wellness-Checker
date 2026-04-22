@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import apiRoutes from './routes/api.js';
 import { saveCheckup, getCheckups, getCheckupById, getNearbyHospitals } from './controllers/checkupController.js';
-import { chatWithAI } from './controllers/chatController.js';
+import { chatWithAI, getOllamaStatus } from './controllers/chatController.js';
 
 dotenv.config();
 
@@ -23,6 +23,7 @@ app.get('/reports/latest', async (req, res) => {
 });
 app.get('/reports/:id', getCheckupById);
 app.post('/chat', chatWithAI);
+app.get('/chat/status', getOllamaStatus);
 app.get('/api/hospitals', getNearbyHospitals);
 
 // Connect to MongoDB
