@@ -97,6 +97,22 @@
 }
 .no-data { color: var(--text-muted); font-size: 14px; }
 
+/* ─── Quick Summary ─── */
+.quick-summary-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+
+.quick-summary-text {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
 /* ─── Condition Cards ─── */
 .conditions-list { display: flex; flex-direction: column; gap: 14px; }
 

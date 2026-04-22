@@ -23,6 +23,12 @@ const getUrl = (type) => {
   return isDevMode ? ENDPOINTS[type].test : ENDPOINTS[type].prod;
 };
 
+const getFallbackUrl = (type) => {
+  // In dev, if webhook-test is unavailable, fallback to the configured prod webhook.
+  if (isDevMode) return ENDPOINTS[type].prod;
+  return null;
+};
+
 // Local Backend Integration for Analytics & DB
 const BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
 const DB_URL = import.meta.env.VITE_DB_URL || `${BASE_URL}/api`;
@@ -62,16 +68,30 @@ api.interceptors.response.use(
 
 // Generic caller with logging
 const executeCall = async (type, payload) => {
-  const url = getUrl(type);
+  const primaryUrl = getUrl(type);
+  const fallbackUrl = getFallbackUrl(type);
   
   // Connection Validator stub
-  if (!url) throw new Error("Invalid endpoint configuration");
+  if (!primaryUrl) throw new Error("Invalid endpoint configuration");
 
   // LOG: Before every API call
-  console.log("Calling API:", url, payload);
-  
-  const response = await api.post(url, payload);
-  return response.data;
+  console.log("Calling API:", primaryUrl, payload);
+
+  try {
+    const response = await api.post(primaryUrl, payload);
+    return response.data;
+  } catch (err) {
+    const shouldFallback =
+      Boolean(fallbackUrl) &&
+      fallbackUrl !== primaryUrl &&
+      (!err.response || err.code === 'ECONNABORTED');
+
+    if (!shouldFallback) throw err;
+
+    console.warn(`Primary endpoint failed for "${type}". Retrying fallback:`, fallbackUrl);
+    const response = await api.post(fallbackUrl, payload);
+    return response.data;
+  }
 }
 
 // Exported Service Methods
@@ -155,21 +175,55 @@ export const fetchHospitals = async (lat, lng) => {
   }
 };
 
-export const processChatWithAI = async (message, history, context) => {
+export const getOllamaStatus = async () => {
+  try {
+    const res = await fetch(`${BASE_URL}/chat/status`);
+    return await res.json();
+  } catch {
+    return { running: null, models: [] };
+  }
+};
+
+export const processChatWithAI = async (message, history, context, model = 'Qwen/Qwen2.5-7B-Instruct', onStream = null) => {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 120000);
+    const useStream = typeof onStream === 'function';
 
     const res = await fetch(`${BASE_URL}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, history, context }),
+      body: JSON.stringify({ message, history, context, model, stream: useStream }),
       signal: controller.signal
     });
 
     clearTimeout(timeout);
 
     if (!res.ok) throw new Error('Failed to process chat response');
+
+    if (useStream) {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const lines = decoder.decode(value).split('\n').filter(l => l.startsWith('data: '));
+        for (const line of lines) {
+          try {
+            const parsed = JSON.parse(line.slice(6));
+            if (parsed.token) {
+              full += parsed.token;
+              onStream(full);
+            }
+            if (parsed.done) return full;
+          } catch {}
+        }
+      }
+      return full;
+    }
+
     const data = await res.json();
     return data.reply;
   } catch (err) {

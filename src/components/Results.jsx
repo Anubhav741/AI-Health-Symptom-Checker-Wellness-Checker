@@ -14,6 +14,11 @@ const SEVERITY_META = {
 const Results = ({ results, patientName, patientData, onReset, onNewCheckup }) => {
   const { conditions = [], severity = 'low', recommendations = [] } = results;
   const sev = SEVERITY_META[severity?.toLowerCase()] || SEVERITY_META.low;
+  const topCondition = conditions[0]?.name || conditions[0]?.condition || 'No clear condition identified';
+  const topProbability = conditions[0]?.probability;
+  const keyRecommendation = recommendations[0] || 'Monitor symptoms and consult a healthcare professional if they worsen.';
+  const summarySeverityLabel = sev.label;
+  const quickSummary = `${summarySeverityLabel}. Most likely concern: ${topCondition}${topProbability ? ` (${topProbability}%)` : ''}. Next step: ${keyRecommendation}`;
 
   const handlePrint = () => window.print();
 
@@ -55,6 +60,14 @@ const Results = ({ results, patientName, patientData, onReset, onNewCheckup }) =
           </p>
         )}
       </div>
+
+      {/* Quick Summary */}
+      <section className="section">
+        <h3 className="section-title">📝 Quick Summary</h3>
+        <div className="quick-summary-card">
+          <p className="quick-summary-text">{quickSummary}</p>
+        </div>
+      </section>
 
       {/* Conditions */}
       <section className="section">

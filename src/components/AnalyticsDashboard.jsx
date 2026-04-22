@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getCheckups } from '../services/api';
+import { getCheckups, sendReport } from '../services/api';
 import { 
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -14,6 +14,8 @@ const AnalyticsDashboard = ({ onStart }) => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedReport, setSelectedReport] = useState(null);
+  const [summarySending, setSummarySending] = useState(false);
+  const [summaryStatus, setSummaryStatus] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -90,6 +92,33 @@ const AnalyticsDashboard = ({ onStart }) => {
     (h.conditions?.[0]?.name || h.conditions?.[0]?.condition || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (h.severity || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const latestCheckup = history[0] || null;
+  const latestCondition = latestCheckup?.conditions?.[0]?.name || latestCheckup?.conditions?.[0]?.condition || 'Not available';
+  const latestRecommendations = Array.isArray(latestCheckup?.recommendations) ? latestCheckup.recommendations.slice(0, 3) : [];
+  
+  const handleResendSummary = async () => {
+    if (!latestCheckup?.email) {
+      setSummaryStatus('Email not available for the latest checkup.');
+      return;
+    }
+
+    setSummarySending(true);
+    setSummaryStatus('');
+    try {
+      await sendReport({
+        email: latestCheckup.email,
+        symptoms: latestCheckup.symptoms || 'Not provided',
+        conditions: Array.isArray(latestCheckup.conditions) ? latestCheckup.conditions : [],
+        severity: latestCheckup.severity || 'moderate',
+        recommendations: Array.isArray(latestCheckup.recommendations) ? latestCheckup.recommendations : []
+      });
+      setSummaryStatus(`Summary sent to ${latestCheckup.email}`);
+    } catch (e) {
+      setSummaryStatus(e.friendlyMessage || 'Failed to send summary email.');
+    } finally {
+      setSummarySending(false);
+    }
+  };
 
   return (
     <div className="home-screen">
@@ -98,6 +127,62 @@ const AnalyticsDashboard = ({ onStart }) => {
          <h2 className="hero-title">Medical Dashboard</h2>
          <p className="hero-subtitle">Visualising real-time checkups and AI diagnostic trends securely via our backend.</p>
          <button className="hero-btn" onClick={onStart}>Start New Health Checkup →</button>
+      </div>
+
+      <div className="glass-panel" style={{ marginBottom: '24px', padding: '22px' }}>
+        <h3 style={{ color: '#fff', margin: '0 0 14px 0' }}>🧾 Last Checkup Summary</h3>
+        {!latestCheckup ? (
+          <p style={{ color: '#94a3b8', margin: 0 }}>No previous checkup found. Start a health checkup to see a summary here.</p>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ color: '#cbd5e1' }}><strong style={{ color: '#fff' }}>Name:</strong> {latestCheckup.name || 'N/A'}</div>
+              <div style={{ color: '#cbd5e1' }}><strong style={{ color: '#fff' }}>Email:</strong> {latestCheckup.email || 'N/A'}</div>
+              <div style={{ color: '#cbd5e1' }}><strong style={{ color: '#fff' }}>Severity:</strong> {latestCheckup.severity || 'N/A'}</div>
+              <div style={{ color: '#cbd5e1' }}><strong style={{ color: '#fff' }}>Date:</strong> {new Date(latestCheckup.createdAt || Date.now()).toLocaleString()}</div>
+            </div>
+
+            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '12px', marginBottom: '12px' }}>
+              <p style={{ margin: 0, color: '#cbd5e1' }}>
+                <strong style={{ color: '#fff' }}>Likely Condition:</strong> {latestCondition}
+              </p>
+            </div>
+
+            <div>
+              <p style={{ color: '#fff', margin: '0 0 8px 0', fontWeight: 600 }}>What to do (quick steps):</p>
+              {latestRecommendations.length === 0 ? (
+                <p style={{ color: '#94a3b8', margin: 0 }}>No recommendations available in the last report.</p>
+              ) : (
+                <ul style={{ margin: 0, paddingLeft: '18px', color: '#cbd5e1' }}>
+                  {latestRecommendations.map((step, i) => (
+                    <li key={i} style={{ marginBottom: '6px' }}>{step}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <button
+                onClick={handleResendSummary}
+                disabled={summarySending || !latestCheckup.email}
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  background: summarySending ? 'rgba(148,163,184,0.2)' : 'rgba(14,165,233,0.18)',
+                  color: '#e2e8f0',
+                  cursor: summarySending ? 'not-allowed' : 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                {summarySending ? 'Sending...' : '✉ Send this summary to email'}
+              </button>
+              {summaryStatus && (
+                <span style={{ color: '#cbd5e1', fontSize: '0.9rem' }}>{summaryStatus}</span>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="stats-row">
