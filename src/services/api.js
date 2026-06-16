@@ -3,29 +3,17 @@ import axios from 'axios';
 // 1. Environment-based switching
 const isDevMode = import.meta.env.DEV;
 
-// Define endpoints cleanly
 const ENDPOINTS = {
-  analyze: {
-    prod: import.meta.env.VITE_ANALYZE_URL || 'https://n8n-production-b27d.up.railway.app/webhook/analyze',
-    test: 'https://n8n-production-b27d.up.railway.app/webhook-test/analyze'
-  },
-  report: {
-    prod: import.meta.env.VITE_REPORT_URL || 'https://n8n-production-b27d.up.railway.app/webhook/send-email',
-    test: 'https://n8n-production-b27d.up.railway.app/webhook-test/send-email'
-  },
-  hospital: {
-    prod: 'https://n8n-production-b27d.up.railway.app/webhook/select-hospital',
-    test: 'https://n8n-production-b27d.up.railway.app/webhook-test/select-hospital'
-  }
+  analyze: import.meta.env.VITE_ANALYZE_URL || 'https://n8n-production-b27d.up.railway.app/webhook/analyze',
+  report: import.meta.env.VITE_REPORT_URL || 'https://n8n-production-b27d.up.railway.app/webhook/send-email',
+  hospital: 'https://n8n-production-b27d.up.railway.app/webhook/select-hospital'
 };
 
 const getUrl = (type) => {
-  return isDevMode ? ENDPOINTS[type].test : ENDPOINTS[type].prod;
+  return ENDPOINTS[type];
 };
 
 const getFallbackUrl = (type) => {
-  // In dev, if webhook-test is unavailable, fallback to the configured prod webhook.
-  if (isDevMode) return ENDPOINTS[type].prod;
   return null;
 };
 
@@ -84,7 +72,7 @@ const executeCall = async (type, payload) => {
     const shouldFallback =
       Boolean(fallbackUrl) &&
       fallbackUrl !== primaryUrl &&
-      (!err.response || err.code === 'ECONNABORTED');
+      (!err.response || err.code === 'ECONNABORTED' || err.response.status === 404);
 
     if (!shouldFallback) throw err;
 

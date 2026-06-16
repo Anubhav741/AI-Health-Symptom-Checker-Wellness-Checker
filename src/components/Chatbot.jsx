@@ -118,7 +118,7 @@ const Chatbot = ({ results, formData }) => {
       setStreamingText('');
       setMessages([
         ...newMessages,
-        { role: 'assistant', content: 'AI is currently busy. Please try again in a moment.' }
+        { role: 'assistant', content: 'AI service unavailable, please try again later' }
       ]);
     }
 
@@ -145,7 +145,7 @@ const Chatbot = ({ results, formData }) => {
   const getStatusLabel = () => {
     if (ollamaStatus.running === null) return 'Connecting...';
     if (ollamaStatus.running) return 'AI Service Online';
-    return 'Retrieving AI connection...';
+    return 'AI Service Unavailable';
   };
 
   // Available models from backend or fallback
@@ -188,7 +188,7 @@ const Chatbot = ({ results, formData }) => {
       {ollamaStatus.running === false && (
         <div className="ollama-offline-banner">
           <WifiOff size={14} />
-          <span>Connecting to AI service... please wait or check backend connection.</span>
+          <span>AI service unavailable, please try again later</span>
         </div>
       )}
 
@@ -267,7 +267,7 @@ const Chatbot = ({ results, formData }) => {
           ref={inputRef}
           type="text"
           className="chatbot-input"
-          placeholder={ollamaStatus.running === false ? 'Configure HF_API_TOKEN first...' : 'Ask a medical question...'}
+          placeholder={ollamaStatus.running === false ? 'AI service unavailable, please try again later' : 'Ask a medical question...'}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyPress}

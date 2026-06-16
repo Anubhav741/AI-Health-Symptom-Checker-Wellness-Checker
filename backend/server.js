@@ -30,14 +30,20 @@ app.get('/api/hospitals', getNearbyHospitals);
 mongoose.connect(MONGODB_URI)
   .then(() => {
     console.log('✅ Connected to MongoDB');
-    app.listen(PORT, () => {
-      console.log(`🚀 Backend server running on port ${PORT}`);
-    });
+    if (process.env.NODE_ENV !== 'production') {
+      app.listen(PORT, () => {
+        console.log(`🚀 Backend server running on port ${PORT}`);
+      });
+    }
   })
   .catch((err) => {
     console.error('❌ MongoDB Connection Error:', err.message);
     console.log('⚠️ Running without database connection due to missing MongoDB instance. Continuing for UI dev gracefully.');
-    app.listen(PORT, () => {
-      console.log(`🚀 Backend server running on port ${PORT} (DB Offline)`);
-    });
+    if (process.env.NODE_ENV !== 'production') {
+      app.listen(PORT, () => {
+        console.log(`🚀 Backend server running on port ${PORT} (DB Offline)`);
+      });
+    }
   });
+
+export default app;

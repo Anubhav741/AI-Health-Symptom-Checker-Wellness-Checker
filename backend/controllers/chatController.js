@@ -164,7 +164,7 @@ export const chatWithAI = async (req, res) => {
     }
 
     // If we've exhausted all models and all retries
-    const fallbackMsg = "AI is currently busy. Please try again in a moment.";
+    const fallbackMsg = "AI service unavailable, please try again later";
     if (stream) {
       res.write(`data: ${JSON.stringify({ token: fallbackMsg, done: true })}\n\n`);
       return res.end();
@@ -173,7 +173,7 @@ export const chatWithAI = async (req, res) => {
 
   } catch (error) {
     console.error('AI Chat Error:', error);
-    const fallbackMsg = "AI is currently busy. Please try again in a moment.";
+    const fallbackMsg = "AI service unavailable, please try again later";
     if (req.body.stream) {
       if (!res.headersSent) {
         res.setHeader('Content-Type', 'text/event-stream');
