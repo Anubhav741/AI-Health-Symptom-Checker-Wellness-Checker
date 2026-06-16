@@ -6,16 +6,16 @@ const isDevMode = import.meta.env.DEV;
 // Define endpoints cleanly
 const ENDPOINTS = {
   analyze: {
-    prod: import.meta.env.VITE_ANALYZE_URL || 'http://localhost:5678/webhook/analyze',
-    test: 'http://localhost:5678/webhook-test/analyze'
+    prod: import.meta.env.VITE_ANALYZE_URL || 'https://n8n-production-b27d.up.railway.app/webhook/analyze',
+    test: 'https://n8n-production-b27d.up.railway.app/webhook-test/analyze'
   },
   report: {
-    prod: import.meta.env.VITE_REPORT_URL || 'http://localhost:5678/webhook/ac2510fa-7773-4994-a3ac-8b2bc2e04b52',
-    test: 'http://localhost:5678/webhook-test/ac2510fa-7773-4994-a3ac-8b2bc2e04b52'
+    prod: import.meta.env.VITE_REPORT_URL || 'https://n8n-production-b27d.up.railway.app/webhook/send-email',
+    test: 'https://n8n-production-b27d.up.railway.app/webhook-test/send-email'
   },
   hospital: {
-    prod: 'http://localhost:5678/webhook/select-hospital',
-    test: 'http://localhost:5678/webhook-test/select-hospital'
+    prod: 'https://n8n-production-b27d.up.railway.app/webhook/select-hospital',
+    test: 'https://n8n-production-b27d.up.railway.app/webhook-test/select-hospital'
   }
 };
 
@@ -175,7 +175,7 @@ export const getOllamaStatus = async () => {
     const res = await fetch(`${BASE_URL}/chat/status`);
     return await res.json();
   } catch {
-    return { running: null, models: [] };
+    return { running: false, models: [] };
   }
 };
 
@@ -226,7 +226,7 @@ export const processChatWithAI = async (message, history, context, model = 'Qwen
     if (err.name === 'AbortError') {
       return "⚠️ AI response took too long. Please try a shorter question.";
     }
-    return "AI is currently busy. Please try again in a moment.";
+    return "AI service unavailable, please try again later";
   }
 };
 

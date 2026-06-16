@@ -11,11 +11,11 @@
 This project presents an AI-driven health symptom checker and wellness tracker designed specifically for students, built using no-code tools.
 
 The system:
-- Collects user symptoms via Google Forms
+- Collects user symptoms via a custom React Frontend (hosted on Vercel)
 - Processes them using a ChatGPT-based natural language processing (NLP) model
 - Generates probabilistic predictions of health conditions
 - Uses a rule-based knowledge map to associate symptoms with conditions and remedies
-- Stores and visualizes data using Google Sheets
+- Automates data routing and email notifications using n8n workflows (hosted on Railway)
 
 Additionally:
 - A point-based reward system encourages healthy habits
@@ -57,11 +57,11 @@ There is a gap between:
 This project proposes an AI-based Health Symptom Checker and Wellness Tracker using no-code tools.
 
 The system:
-- Accepts symptoms via Google Forms
-- Uses AI to analyze inputs
+- Accepts symptoms via a React Web App
+- Uses AI to analyze inputs via n8n webhooks
 - Provides probability-based condition predictions
 - Suggests wellness tips
-- Tracks health patterns using Google Sheets
+- Automates email reporting via n8n
 
 This approach is:
 - Simple
@@ -85,7 +85,7 @@ This approach is:
 ## ⚙️ Methodology
 
 ### 1. Data Collection
-- Google Forms (symptoms, sleep, stress)
+- React Web App deployed on Vercel
 
 ### 2. Data Processing
 - ChatGPT analyzes symptoms
@@ -96,8 +96,8 @@ This approach is:
 - Example: IF headache + eye strain → screen fatigue
 
 
-### 4. Data Storage
-- Google Sheets
+### 4. Workflow Automation
+- n8n (hosted on Railway) for routing data and sending email reports
 
 ### 5. Visualization
 - Charts for:
@@ -112,8 +112,8 @@ This approach is:
 ```mermaid
 graph LR
 
-A[👤 User] --> B[📝 Google Form]
-B --> C[📊 Google Sheets]
+A[👤 User] --> B[💻 React App (Vercel)]
+B --> C[⚙️ n8n Workflows (Railway)]
 C --> D[🤖 ChatGPT]
 D --> E[📄 Output]
 E --> F[📈 Dashboard]
@@ -161,7 +161,7 @@ Consult a doctor for serious issues.
 
 ## ✨ Features
 
-- Symptom input form (30+ symptoms)  
+- Custom React symptom input form (30+ symptoms)  
 - AI-based condition prediction  
 - Probability-based output  
 - Wellness tracking dashboard  
